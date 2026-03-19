@@ -1,0 +1,186 @@
+services:
+
+##  GLUETUN  ##
+
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    hostname: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - 8191:8191       # FlareSolverr
+      - 9696:9696       # Prowlarr
+      - 7878:7878       # Radarr
+      - 8989:8989       # Sonarr
+      - 8080:8080       # qBittorrent web
+      - 51515:51515     # qBittorrent tcp These ports are ambiguous to what you want qBittorrent to use.
+      - 51515:51515/udp # qBittorrent udp ^^^
+      - 3333:3333       # BitMagnet Main
+      - 3334:3334       # BitMagnet tcp
+      - 3334:3334/udp   # BitMagnet udp
+    environment:
+      - VPN_SERVICE_PROVIDER= #PROVIDER
+      - VPN_TYPE= # Please use wireguard, it's the best protocol
+      - WIREGUARD_PRIVATE_KEY= # Pivate Key
+      - WIREGUARD_ADDRESSES= # Address
+      #- SERVER_CITIES= Useful for selecting certain Cities
+      - TZ=${{ tz }}
+    restart: unless-stopped
+    extra_hosts:
+      - "postgres:192.168.55.11"
+    networks:
+      default:
+      internal_bridge:
+      bitmagnet:
+        ipv4_address: 192.168.55.10
+
+## FLARESOLVERR  ##
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    network_mode: service:gluetun
+    environment:
+      - LOG_LEVEL=info
+      - LOG_HTML=false
+      - CAPTCHA_SOLVER=none
+      - TZ=${{ tz }}
+    restart: unless-stopped
+    depends_on:
+      gluetun:
+        condition: service_healthy
+
+## QBITTORRENT ##
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: service:gluetun
+    environment:
+      - PUID=${{ uid:"appuser" }}
+      - PGID=${{ gid:"users" }}
+      - TZ=${{ tz }}
+      - WEBUI_PORT=8080
+      - TORRENTING_PORT=51515 #Port is ambiguous to what you want qBittorrent to use.
+    volumes:
+      - ${{ sf:"appdata" }}/qbittorrent/config:/config
+      - ${{ sf:"data" }}/torrents:/data/torrents
+    restart: unless-stopped
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    mem_limit: 2g
+    
+## RADARR ##
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    network_mode: service:gluetun
+    environment:
+      - PUID=${{ uid:"appuser" }}
+      - PGID=${{ gid:"users" }}
+      - TZ=${{ tz }}
+    volumes:
+      - ${{ sf:"appdata" }}/radarr/config:/config
+      - ${{ sf:"data" }}:/data
+    restart: unless-stopped
+    depends_on:
+      gluetun:
+        condition: service_healthy
+
+## SONARR  ##
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:amd64-latest
+    container_name: sonarr
+    network_mode: service:gluetun
+    environment:
+      - PUID=${{ uid:"appuser" }}
+      - PGID=${{ gid:"users" }}
+      - TZ=${{ tz }}
+    volumes:
+      - /etc/hosts:/etc/hosts:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ${{ sf:"appdata" }}/sonarr/config:/config
+      - ${{ sf:"data" }}:/data
+    restart: unless-stopped
+    depends_on:
+      gluetun:
+        condition: service_healthy
+
+## PROWLARR  ##
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    network_mode: service:gluetun
+    environment:
+      - PUID=${{ uid:"appuser" }}
+      - PGID=${{ gid:"users" }}
+      - TZ=${{ tz }}
+    volumes:
+      - ${{ sf:"appdata" }}/prowlarr/config:/config
+    restart: unless-stopped
+    depends_on:
+      gluetun:
+        condition: service_healthy
+
+## BITMAGNET  ##
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: bitmagnet-postgres
+    volumes:
+      - ${{ sf:"appdata" }}/bitmagnet/postgres:/var/lib/postgresql/data
+    networks:
+      bitmagnet:
+        ipv4_address: 192.168.55.11
+    restart: unless-stopped
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=bitmagnet
+      - PGUSER=postgres
+    shm_size: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  bitmagnet:
+    image: ghcr.io/bitmagnet-io/bitmagnet:latest
+    container_name: bitmagnet
+    network_mode: service:gluetun
+    restart: unless-stopped
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PASSWORD=postgres
+      - TMDB_API_KEY= #Add your TMBD API KEY HERE
+    volumes:
+      - ${{ sf:"appdata" }}/bitmagnet/config:/root/.config/bitmagnet
+    command:
+      - worker
+      - run
+      - --all
+    depends_on:
+      postgres:
+        condition: service_healthy
+      gluetun:
+        condition: service_healthy
+
+## NETWORK BRIDGES  ##
+
+networks:
+  bitmagnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.55.0/24
+          gateway: 192.168.55.1
+  internal_bridge: ## Only necessary if running NGINX on a macvlan so it can properly point to gluetun:{PORTS} (respective of container)
+    external: true

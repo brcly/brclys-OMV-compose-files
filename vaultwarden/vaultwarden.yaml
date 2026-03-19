@@ -1,0 +1,16 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    hostname: vaultwarden
+    networks:
+      internal_bridge:
+    environment:
+      DOMAIN: # Use your NGINX proxy domain here
+    volumes:
+      - ${{ sf:"appdata" }}/vaultwarden:/data
+    restart: unless-stopped
+
+networks:
+  internal_bridge: ## Only necessary if running NGINX on a macvlan so it can properly point to vaultwarden:80
+    external: true

@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:14-alpine
+    healthcheck:
+      test: pg_isready -d drop -U drop
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - ${{ sf:"appdata" }}/drop/db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=drop
+      - POSTGRES_USER=drop
+      - POSTGRES_DB=drop
+      
+  drop:
+    image: ghcr.io/drop-oss/drop:latest
+    container_name: drop
+    hostname: drop
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      default:
+      internal_bridge:
+    ports:
+      - 3000:3000
+    volumes:
+      - ${{ sf:"data" }}/games/drop-oss-library:/library
+      - ${{ sf:"appdata" }}/drop/data:/data
+    environment:
+      - DATABASE_URL=postgres://drop:drop@postgres:5432/drop
+      - EXTERNAL_URL= # Use your NGINX reverse proxy domain
+      - IGDB_CLIENT_ID= ## IGDB CLIENT / Used for metadata
+      - IGDB_CLIENT_SECRET= ## IGDB SECRET
+networks:
+  default:
+  internal_bridge: ## Only necessary if running NGINX on a macvlan so it can properly point to drop:3000
+    external: true
