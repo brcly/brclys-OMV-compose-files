@@ -1,4 +1,4 @@
-# Brcly's Collection OMV Docker Compose YAML's
+# Collection OMV Docker Compose YAML's
 
 Just a few container examples to help you get up and running with [OMV8](https://www.openmediavault.org/ "OpenMediaVault") + [OMV-Extras.org](http://omv-extras.org "OMV-Extras")
 
@@ -8,5 +8,3 @@ I'm using OMV-Extras Recommended BASIC file setup from Docker-Compose
 
 # Docker Compose Settings
 ![](https://github.com/brcly/brclys-OMV-compose-files/blob/main/docker-fs-setup.png)
-
-I've also created a bridge network for NGINX / Homarr to reach apps properly.
