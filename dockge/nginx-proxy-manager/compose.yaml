@@ -1,0 +1,32 @@
+services:
+  npm:
+    image: 'jc21/nginx-proxy-manager:latest'
+    restart: unless-stopped
+    container_name: nginx-proxy-manager
+    hostname: npm
+    networks:
+      lan_macvlan:
+        ipv4_address: 10.0.0.80
+        mac_address: 02:00:00:00:00:80 # Register a fixed Mac address so when restarting, router doesn't think there's constantly new devices.
+      internal_bridge:
+    environment:
+      DISABLE_IPV6: true
+      PUID: 1000
+      PGID: 1000
+    volumes:
+      - ${APPDATA}/nginx-proxy-manager/data:/data
+      - ${APPDATA}/nginx-proxy-manager/letsencrypt:/etc/letsencrypt
+    depends_on:
+      - db
+  db:
+    image: 'jc21/mariadb-aria:latest'
+    restart: unless-stopped
+    volumes:
+      - ${APPDATA}/nginx-proxy-manager/mysql:/var/lib/mysql
+
+networks:
+  lan_macvlan: # Setup macvlan so it's seperate from main OMV IP.
+    name: lan_macvlan
+    external: true
+  internal_bridge: ## Only necessary if running NGINX on a macvlan so it can properly point to {docker-hostname}:{PORTS} (respective of container)
+    external: true

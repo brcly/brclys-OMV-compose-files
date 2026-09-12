@@ -1,0 +1,41 @@
+services:
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    hostname: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - 8191:8191       # FlareSolverr
+      - 9696:9696       # Prowlarr
+      - 7878:7878       # Radarr
+      - 8989:8989       # Sonarr
+      - 8080:8080       # qBittorrent web
+      - 51515:51515     # qBittorrent tcp These ports are ambiguous to what you want qBittorrent to use.
+      - 51515:51515/udp # qBittorrent udp ^^^
+      - 3333:3333       # BitMagnet Main
+      - 3334:3334       # BitMagnet tcp
+      - 3334:3334/udp   # BitMagnet udp
+    environment:
+      - VPN_SERVICE_PROVIDER= #PROVIDER
+      - VPN_TYPE= # Please use wireguard, it's the best protocol
+      - WIREGUARD_PRIVATE_KEY= # Pivate Key
+      - WIREGUARD_ADDRESSES= # Address
+      #- SERVER_CITIES= Useful for selecting certain Cities
+      - TZ=${TZ}
+    restart: unless-stopped
+    extra_hosts:
+      - "postgres:192.168.55.11" # bitmagnet-postgres, see ../bitmagnet stack
+    networks:
+      default:
+      internal_bridge:
+      bitmagnet:
+        ipv4_address: 192.168.55.10
+
+networks:
+  internal_bridge: ## Only necessary if running NGINX on a macvlan so it can properly point to gluetun:{PORTS} (respective of container)
+    external: true
+  bitmagnet: # shared with the ../bitmagnet stack - see dockge/README.md for one-time creation
+    external: true

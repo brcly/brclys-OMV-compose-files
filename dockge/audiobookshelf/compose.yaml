@@ -1,0 +1,19 @@
+services:
+  audiobookshelf:
+    image: ghcr.io/advplyr/audiobookshelf
+    container_name: audiobookshelf
+    hostname: audiobookshelf
+    networks:
+      default:
+      internal_bridge:
+    ports:
+      - 13378:80
+    volumes:
+      - ${DATA}/media/books:/audiobooks
+      - ${APPDATA}/audiobookshelf/metadata:/metadata
+      - ${APPDATA}/audiobookshelf/config:/config
+    restart: unless-stopped
+
+networks:
+  internal_bridge: ## Only necessary if running NGINX on a macvlan so it can properly point to audiobookshelf:80
+    external: true

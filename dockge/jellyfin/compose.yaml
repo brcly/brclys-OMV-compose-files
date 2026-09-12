@@ -1,0 +1,23 @@
+services:
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    hostname: jellyfin
+    networks:
+      default:
+      internal_bridge:
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - ${APPDATA}/jellyfin/library:/config
+      - ${DATA}/media:/media
+    ports:
+      - 8096:8096
+    # devices: Depending on your transcoding hardware, example here is for Intel QSV
+    #   - /dev/dri/renderD128:/dev/dri/renderD128
+    restart: unless-stopped
+
+networks:
+  default:
+  internal_bridge: ## Only necessary if running NGINX on a macvlan so it can properly point to jellyfin:8096
+    external: true

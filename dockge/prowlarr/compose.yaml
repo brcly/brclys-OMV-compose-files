@@ -1,0 +1,14 @@
+services:
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    # Shares gluetun's network namespace - requires the gluetun container to already be running.
+    # Cross-stack depends_on isn't supported by plain docker compose, so start the gluetun stack first.
+    network_mode: container:gluetun
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${APPDATA}/prowlarr/config:/config
+    restart: unless-stopped

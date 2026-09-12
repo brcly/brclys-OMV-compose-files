@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bitmagnet-postgres
+    volumes:
+      - ${APPDATA}/bitmagnet/postgres:/var/lib/postgresql/data
+    networks:
+      bitmagnet:
+        ipv4_address: 192.168.55.11
+    restart: unless-stopped
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=bitmagnet
+      - PGUSER=postgres
+    shm_size: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  bitmagnet:
+    image: ghcr.io/bitmagnet-io/bitmagnet:latest
+    container_name: bitmagnet
+    # Shares gluetun's network namespace - requires the gluetun container to already be running.
+    # Cross-stack depends_on isn't supported by plain docker compose, so start the gluetun stack first.
+    network_mode: container:gluetun
+    restart: unless-stopped
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PASSWORD=postgres
+      - TMDB_API_KEY= #Add your TMBD API KEY HERE
+    volumes:
+      - ${APPDATA}/bitmagnet/config:/root/.config/bitmagnet
+    command:
+      - worker
+      - run
+      - --all
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+networks:
+  bitmagnet: # shared with the ../gluetun stack - see dockge/README.md for one-time creation
+    external: true

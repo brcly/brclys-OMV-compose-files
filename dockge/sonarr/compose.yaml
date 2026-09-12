@@ -1,0 +1,17 @@
+services:
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:amd64-latest
+    container_name: sonarr
+    # Shares gluetun's network namespace - requires the gluetun container to already be running.
+    # Cross-stack depends_on isn't supported by plain docker compose, so start the gluetun stack first.
+    network_mode: container:gluetun
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /etc/hosts:/etc/hosts:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ${APPDATA}/sonarr/config:/config
+      - ${DATA}:/data
+    restart: unless-stopped

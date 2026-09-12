@@ -1,0 +1,18 @@
+services:
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    # Shares gluetun's network namespace - requires the gluetun container to already be running.
+    # Cross-stack depends_on isn't supported by plain docker compose, so start the gluetun stack first.
+    network_mode: container:gluetun
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=8080
+      - TORRENTING_PORT=51515 #Port is ambiguous to what you want qBittorrent to use.
+    volumes:
+      - ${APPDATA}/qbittorrent/config:/config
+      - ${DATA}/torrents:/data/torrents
+    restart: unless-stopped
+    mem_limit: 2g

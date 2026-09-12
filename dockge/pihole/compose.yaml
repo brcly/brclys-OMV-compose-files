@@ -1,0 +1,38 @@
+services:
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:latest
+    hostname: pihole
+    networks:
+      pihole-net:
+        ipv4_address: 10.0.0.53
+        mac_address: 02:00:00:00:00:53  # Register a fixed Mac address so when restarting, router doesn't think there's constantly new devices.
+      piholeunbound-net:
+      internal_bridge:
+    environment:
+      - TZ=${TZ}
+      - FTLCONF_webserver_api_password= # Set a super-secure password here!
+      - FTLCONF_dns_upstreams=unbound#5335
+    volumes:
+      - ${APPDATA}/pihole/:/etc/pihole
+    restart: unless-stopped
+    depends_on:
+      - unbound
+
+  unbound:
+    image: alpinelinux/unbound:latest
+    container_name: unbound
+    networks:
+      piholeunbound-net:
+    volumes:
+      - ${APPDATA}/unbound:/etc/unbound
+    restart: unless-stopped
+
+networks:
+  pihole-net:
+    name: lan_macvlan  # Setup macvlan so it's seperate from main OMV IP.
+    external: true
+  piholeunbound-net:
+    name: piholeunbound-net
+  internal_bridge: ## Only necessary if running NGINX on a macvlan so it can properly point to pihole:80
+    external: true

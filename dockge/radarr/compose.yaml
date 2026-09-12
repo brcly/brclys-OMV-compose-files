@@ -1,0 +1,15 @@
+services:
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    # Shares gluetun's network namespace - requires the gluetun container to already be running.
+    # Cross-stack depends_on isn't supported by plain docker compose, so start the gluetun stack first.
+    network_mode: container:gluetun
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${APPDATA}/radarr/config:/config
+      - ${DATA}:/data
+    restart: unless-stopped
